@@ -20,7 +20,7 @@ export default function BookingPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
   const [bookingDate, setBookingDate] = useState(new Date().toISOString().split("T")[0]);
-  
+
   // Time Slots 
   const [availableTimePoints, setAvailableTimePoints] = useState<string[]>([]);
   const [startTime, setStartTime] = useState("");
@@ -30,7 +30,7 @@ export default function BookingPage() {
 
   const BASE_URL = "http://localhost:8000";
 
- const parseSlotsToPoints = (slots: any[]) => {
+  const parseSlotsToPoints = (slots: any[]) => {
     const pointsSet = new Set<string>();
     slots.forEach((slot: any) => {
       let startHour = parseInt(slot.start.split(":")[0]);
@@ -67,7 +67,7 @@ export default function BookingPage() {
                   headers: { "Accept": "application/json", "Authorization": `Bearer ${token}` }
                 });
                 const slotsData = await slotsRes.json();
-                
+
                 if (slotsData.status) {
                   const formattedTodaySlots: string[] = [];
                   slotsData.available_slots.forEach((s: any) => {
@@ -75,7 +75,7 @@ export default function BookingPage() {
                     const eh = parseInt(s.end.split(":")[0]);
                     while (sh < eh) {
                       if (sh < 17) {
-                        formattedTodaySlots.push(`${sh.toString().padStart(2, "0")}:00-${(sh+1).toString().padStart(2, "0")}:00`);
+                        formattedTodaySlots.push(`${sh.toString().padStart(2, "0")}:00-${(sh + 1).toString().padStart(2, "0")}:00`);
                       }
                       sh++;
                     }
@@ -110,14 +110,14 @@ export default function BookingPage() {
           headers: { "Accept": "application/json", "Authorization": `Bearer ${token}` }
         });
         const resData = await response.json();
-        
+
         if (resData.status) {
           const points = parseSlotsToPoints(resData.available_slots);
           setAvailableTimePoints(points);
-          
+
           if (points.length > 1) {
             setStartTime(points[0]);
-            setEndTime(points[1]); 
+            setEndTime(points[1]);
           } else {
             setStartTime("");
             setEndTime("");
@@ -132,6 +132,23 @@ export default function BookingPage() {
 
     fetchModalSlots();
   }, [selectedRoom, bookingDate]);
+
+  useEffect(() => {
+    if (!startTime || availableTimePoints.length === 0) return;
+
+    let validEndOptions: string[] = [];
+
+    if (startTime) {
+      const [hour, minute] = startTime.split(':').map(Number);
+      const nextHour = String(hour + 1).padStart(2, '0');
+      const nextTime = `${nextHour}:${String(minute).padStart(2, '0')}`; 
+
+      validEndOptions = [nextTime];
+    }
+    if (!validEndOptions.includes(endTime)) {
+      setEndTime(validEndOptions[0] || "");
+    }
+  }, [startTime, availableTimePoints]);
 
   const handleOpenBookForm = (room: Room) => {
     setSelectedRoom(room);
@@ -202,7 +219,7 @@ export default function BookingPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {rooms.map((room) => (
-          <BookingRoomCard 
+          <BookingRoomCard
             key={room.id}
             room={room}
             onBookClick={handleOpenBookForm}
@@ -214,7 +231,7 @@ export default function BookingPage() {
       {isFormOpen && selectedRoom && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-md p-6 relative shadow-2xl">
-            
+
             <button onClick={() => setIsFormOpen(false)} className="absolute top-4 right-4 p-1 text-slate-400 hover:text-white transition">
               <X className="w-5 h-5" />
             </button>
@@ -224,14 +241,14 @@ export default function BookingPage() {
             </h2>
 
             <form onSubmit={handleSubmitBooking} className="space-y-4 text-sm">
-              
+
               <div>
                 <label className="text-xs text-slate-400 block mb-1">Select Date</label>
-                <input 
-                  type="date" 
-                  required 
-                  value={bookingDate} 
-                  onChange={(e) => setBookingDate(e.target.value)} 
+                <input
+                  type="date"
+                  required
+                  value={bookingDate}
+                  onChange={(e) => setBookingDate(e.target.value)}
                   className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-indigo-500 scheme-dark"
                 />
               </div>
@@ -240,8 +257,8 @@ export default function BookingPage() {
                 <div>
                   <label className="text-xs text-slate-400 block mb-1">Start Time</label>
                   {availableTimePoints.length > 0 ? (
-                    <select 
-                      value={startTime} 
+                    <select
+                      value={startTime}
                       onChange={(e) => setStartTime(e.target.value)}
                       className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:border-indigo-500"
                     >
@@ -257,8 +274,8 @@ export default function BookingPage() {
                 <div>
                   <label className="text-xs text-slate-400 block mb-1">End Time</label>
                   {availableTimePoints.length > 0 ? (
-                    <select 
-                      value={endTime} 
+                    <select
+                      value={endTime}
                       onChange={(e) => setEndTime(e.target.value)}
                       className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:border-indigo-500"
                     >
@@ -274,11 +291,11 @@ export default function BookingPage() {
 
               <div>
                 <label className="text-xs text-slate-400 block mb-1">Meeting Purpose</label>
-                <textarea 
-                  required 
-                  value={purpose} 
-                  onChange={(e) => setPurpose(e.target.value)} 
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-white h-20 resize-none focus:outline-none focus:border-indigo-500" 
+                <textarea
+                  required
+                  value={purpose}
+                  onChange={(e) => setPurpose(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-white h-20 resize-none focus:outline-none focus:border-indigo-500"
                   placeholder="e.g., Project Discussion..."
                 />
               </div>

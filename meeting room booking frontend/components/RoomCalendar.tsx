@@ -64,7 +64,7 @@ export default function RoomCalendar({
   const [hoverPos, setHoverPos] = useState({ x: 0, y: 0 });
 
   return (
-    <div className="rounded-2xl bg-white shadow-[0_20px_60px_-15px_rgba(255,255,255,0.3)] ring-1 ring-violet-100 overflow-hidden">
+    <div className="rounded-xl bg-white shadow-[0_20px_60px_-15px_rgba(255,255,255,0.3)] ring-1 ring-violet-100 overflow-hidden">
       <div className="overflow-x-auto">
         <div className="flex border-b-2 border-violet-200 bg-violet-50/60 min-w-[900px]">
           <div className="w-40 shrink-0 p-3 text-slate-900 text-sm font-semibold">
