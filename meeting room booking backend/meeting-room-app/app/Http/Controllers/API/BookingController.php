@@ -2,16 +2,20 @@
 
 namespace App\Http\Controllers\API;
 
-use App\Models\Booking;
 use App\Http\Requests\StoreBookingRequest;
 use App\Http\Requests\UpdateBookingRequest;
+use App\Models\Booking;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 
 class BookingController extends BaseController
 {
+    // private const CONFIRMATION_WINDOW_MINUTES = 10;
+
     public function index(): JsonResponse
     {
+        //  $this->autoFlagUnconfirmedBookings();
         $bookings = Booking::with(['user', 'room'])->get();
 
         return response()->json([
@@ -20,21 +24,22 @@ class BookingController extends BaseController
         ], 200);
     }
 
-    public function store(StoreBookingRequest $request): JsonResponse
-    {
-        $data = $request->validated();
-        $data['user_id'] = auth::id();
+   public function store(StoreBookingRequest $request): JsonResponse
+{
+    $data = $request->validated();
+    $data['user_id'] = Auth::id();
+    $data['status'] = 'booked';
 
-        $booking = Booking::create($data);
+    $booking = Booking::create($data);
 
-        return response()->json([
-            'status' => true,
-            'message' => 'Booking created successfully',
-            'data' => $booking->load(['user', 'room']),
-        ], 201);
-    }
+    return response()->json([
+        'status' => true,
+        'message' => 'Booking created successfully',
+        'data' => $booking->load(['user', 'room']),
+    ], 201);
+}
 
-    public function show(Booking $booking): JsonResponse
+public function show(Booking $booking): JsonResponse
     {
         return response()->json([
             'status' => true,
@@ -62,7 +67,8 @@ class BookingController extends BaseController
             'message' => 'Booking deleted successfully',
         ], 200);
     }
-    public function confirm(Booking $booking): JsonResponse
+
+   public function confirm(Booking $booking): JsonResponse
     {
         if ($booking->status !== 'pending') {
             return response()->json([
@@ -71,7 +77,7 @@ class BookingController extends BaseController
             ], 422);
         }
 
-        $booking->update(['status' => 'confirmed']);
+       $booking->update(['status' => 'confirmed']);
 
         return response()->json([
             'status' => true,
@@ -80,12 +86,12 @@ class BookingController extends BaseController
         ], 200);
     }
 
-    public function reject(Booking $booking): JsonResponse
+  public function reject(Booking $booking): JsonResponse
     {
-        if ($booking->status !== 'pending') {
+        if (!in_array($booking->status, ['booked'], true)) {
             return response()->json([
                 'status' => false,
-                'message' => 'Only pending bookings can be rejected.',
+                'message' => 'Only booked reservations can be rejected.',
             ], 422);
         }
 
@@ -97,4 +103,47 @@ class BookingController extends BaseController
             'data' => $booking->load(['user', 'room']),
         ], 200);
     }
+
+    public function cancel(Booking $booking): JsonResponse
+    {
+        if ((int) $booking->user_id !== (int) Auth::id()) {
+            return response()->json([
+                'status' => false,
+                'message' => 'You can only cancel your own booking.',
+            ], 403);
+        }
+
+        if ($booking->status !== 'booked') {
+            return response()->json([
+                'status' => false,
+                'message' => 'Only booked reservations can be cancelled.',
+            ], 422);
+        }
+
+        $booking->update([
+            'status' => 'cancelled',
+        ]);
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Booking cancelled successfully',
+            'data' => $booking->load(['user', 'room']),
+        ], 200);
+    }
+
+    // private function autoFlagUnconfirmedBookings(): void
+    // {
+    //     $now = Carbon::now();
+
+    //     Booking::where('status', 'booked')
+    //         ->whereNull('confirmed_at')
+    //         ->get()
+    //         ->each(function (Booking $booking) use ($now) {
+    //             $startDateTime = Carbon::parse($booking->booking_date)->setTimeFromTimeString($booking->start_time);
+
+    //             if ($now->greaterThanOrEqualTo($startDateTime)) {
+    //                 $booking->update(['status' => 'unconfirmed']);
+    //             }
+    //         });
+    // }
 }

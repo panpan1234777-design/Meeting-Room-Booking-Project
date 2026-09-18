@@ -16,6 +16,12 @@ class Booking extends Model
         'purpose',
         'status',
         'remark',
+    //     'confirmed_at',
+    //     'recurring_group_id',
+    // ];
+    //  protected $casts = [
+    //     'booking_date' => 'date:Y-m-d',
+    //     'confirmed_at' => 'datetime',
     ];
     public function user():BelongsTo
     {

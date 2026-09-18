@@ -75,7 +75,7 @@ class RoomController extends BaseController
 
         $bookings = Booking::where('room_id', $room->id)
             ->where('booking_date', $date)
-            ->whereIn('status', ['pending', 'confirmed'])
+            ->where('status', 'booked')
             ->orderBy('start_time')
             ->get(['start_time', 'end_time']);
 

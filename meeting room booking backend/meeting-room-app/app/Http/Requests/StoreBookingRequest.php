@@ -2,10 +2,11 @@
 
 namespace App\Http\Requests;
 
-use Illuminate\Foundation\Http\FormRequest;
 use App\Models\Booking;
-use Illuminate\Contracts\Validation\Validator;
+use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Contracts\Validation\Validator as ValidatorContract;
 use Illuminate\Http\Exceptions\HttpResponseException;
+// use Illuminate\Support\Facades\Validator;
 
 class StoreBookingRequest extends FormRequest
 {
@@ -23,12 +24,17 @@ class StoreBookingRequest extends FormRequest
             'end_time' => ['required', 'date_format:H:i', 'after:start_time'],
             'purpose' => ['required', 'string', 'max:255'],
             'remark' => ['nullable', 'string'],
+
+            // NEW — sent by the frontend when "repeat on consecutive days"
+            // is used, so every booking in the series shares one id.
+            // Not required for a normal single-day booking.
+            // 'recurring_group_id' => ['nullable', 'uuid'],
         ];
     }
 
-    public function withValidator(Validator $validator): void
+    public function withValidator(ValidatorContract $validator): void
     {
-        $validator->after(function (Validator $validator) {
+        $validator->after(function (ValidatorContract $validator) {
             $roomId = $this->input('room_id');
             $date = $this->input('booking_date');
             $start = $this->input('start_time');
@@ -40,23 +46,23 @@ class StoreBookingRequest extends FormRequest
 
             $overlap = Booking::where('room_id', $roomId)
                 ->where('booking_date', $date)
-                ->whereIn('status', ['pending', 'confirmed'])
+                ->where('status', 'booked')
                 ->where(function ($query) use ($start, $end) {
                     $query->where('start_time', '<', $end)
-                          ->where('end_time', '>', $start);
+                        ->where('end_time', '>', $start);
                 })
                 ->exists();
 
             if ($overlap) {
                 $validator->errors()->add(
                     'start_time',
-                    'already taken'
+                    'This time slot overlaps with an existing booking.'
                 );
             }
         });
     }
 
-    protected function failedValidation(Validator $validator)
+    protected function failedValidation(ValidatorContract $validator)
     {
         throw new HttpResponseException(response()->json([
             'status' => false,

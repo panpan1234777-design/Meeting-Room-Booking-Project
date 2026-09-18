@@ -8,6 +8,7 @@ use App\Http\Controllers\API\BookingController;
 
 // Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
+
 Route::middleware('auth:api')->group(function () {
 
     Route::post('/logout', [AuthController::class, 'logout']);
@@ -25,6 +26,8 @@ Route::middleware('auth:api')->group(function () {
     Route::get('/bookings/{booking}', [BookingController::class, 'show']);
     Route::put('/bookings/{booking}', [BookingController::class, 'update']);
     Route::delete('/bookings/{booking}', [BookingController::class, 'destroy']);
+    Route::post('/bookings/{booking}/cancel', [BookingController::class, 'cancel']);
+    //  Route::post('/bookings/{booking}/confirm-attendance', [BookingController::class, 'confirmAttendance']);
 
     Route::middleware('role:admin')->group(function () {
 
