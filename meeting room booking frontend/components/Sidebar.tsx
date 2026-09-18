@@ -45,7 +45,7 @@ export default function Sidebar() {
     <aside className="flex h-screen w-64 flex-col justify-between border-r border-slate-800 bg-slate-900 p-5">
       <div>
         <h1 className="mb-8 text-lg font-bold text-white">
-          Meeting<span className="text-blue-500">RoomBooking</span>
+          Meeting<span className="text-orange-500">RoomBooking</span>
         </h1>
 
         <nav className="space-y-1">
@@ -57,8 +57,8 @@ export default function Sidebar() {
                 key={item.href}
                 href={item.href}
                 className={`flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium transition ${active
-                    ? "bg-blue-600 text-white"
-                    : "text-slate-400 hover:bg-slate-800 hover:text-white"
+                    ? "bg-orange-500 text-white"
+                    : "text-slate-400 hover:bg-orange-500 hover:text-white"
                   }`}
               >
                 <Icon size={18} />
@@ -71,7 +71,7 @@ export default function Sidebar() {
 
       <div className="border-t border-slate-800 pt-4">
         {user && (
-          <p className="mb-3 truncate px-4 text-xs text-slate-500">
+          <p className="mb-3 truncate px-4 text-xs text-slate-200">
             {user.name}
           </p>
         )}

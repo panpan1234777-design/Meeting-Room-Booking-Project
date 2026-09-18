@@ -134,7 +134,7 @@ export default function AdminRoomsPage() {
     <div className="p-8 max-w-7xl mx-auto min-h-screen text-white">
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-3xl font-extrabold tracking-tight">Manage Meeting Rooms (Admin)</h1>
+          <h1 className="text-2xl font-extrabold tracking-tight">Manage Meeting Rooms (Admin)</h1>
         </div>
         <button 
           onClick={handleOpenCreate}
