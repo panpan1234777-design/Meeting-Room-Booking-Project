@@ -279,6 +279,20 @@ export default function BookingPage() {
       );
       return;
     }
+    const now = new Date();
+
+    const currentDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+
+    if (bookingDate === currentDate) {
+      const currentMins = now.getHours() * 60 + now.getMinutes();
+
+      if (startMins <= currentMins) {
+        setErrorMessage(
+          "This time has already passed. Please select a current time.",
+        );
+        return;
+      }
+    }
 
     const token = localStorage.getItem("token");
 
@@ -305,11 +319,13 @@ export default function BookingPage() {
         setIsFormOpen(false);
         router.push("/my-bookings");
       } else {
-        const rawMsg = resData.message || "";
-        if (rawMsg.toLowerCase().includes("validation") || !rawMsg) {
-          setErrorMessage("This time slot overlaps with an existing booking");
+        if (resData.errors) {
+          const firstErr = Object.values(resData.errors).flat()[0];
+          setErrorMessage(String(firstErr));
+        } else if (resData.message) {
+          setErrorMessage(resData.message);
         } else {
-          setErrorMessage(rawMsg);
+          setErrorMessage("Failed to create booking. Please check your inputs.");
         }
       }
     } catch (error) {
@@ -377,74 +393,100 @@ export default function BookingPage() {
   return (
     <div className="p-8 max-w-7xl mx-auto min-h-screen text-white">
       <div className="mb-6">
-        <h1 className="text-3xl font-extrabold tracking-tight">
+        <h1 className="text-2xl font-extrabold tracking-tight text-white md:text-3xl">
           Book a Meeting Room
         </h1>
-        <p className="text-slate-400 text-sm mt-1">
+        <p className="mt-1 text-sm text-slate-400">
           Select a room below to schedule your meeting
         </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {rooms.map((room) => (
-          <div
-            key={room.id}
-            className="bg-slate-900 border border-slate-800 rounded-3xl p-5 flex flex-col justify-between shadow-xl"
-          >
-            <div>
-              <div className="flex justify-between items-center mb-3">
-                <span className="text-[11px] px-2.5 py-0.5 bg-indigo-950 text-indigo-400 border border-indigo-800/50 rounded-full font-medium tracking-wide">
-                  MEETING ROOM
-                </span>
-                <span className="text-xs text-emerald-400 font-semibold bg-emerald-950/50 px-2.5 py-1 rounded-full border border-emerald-800/40">
-                  {room.status}
-                </span>
-              </div>
-              <h3 className="text-xl font-bold text-white mb-3">{room.name}</h3>
+        {rooms.map((room) => {
+          const isMaintenance = room.status === "maintenance";
 
-              <div className="bg-slate-950/60 border border-slate-800/80 rounded-2xl p-3.5 mb-4">
-                <div className="text-xs text-slate-400 font-medium mb-2 flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>{" "}
-                  Available Today:
-                </div>
-                <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto">
-                  {room.today_slots && room.today_slots.length > 0 ? (
-                    room.today_slots.map((slot, i) => (
-                      <button
-                        key={i}
-                        type="button"
-                        onClick={() => {
-                          handleOpenBookForm(room);
-                          handleSelectSlotBadge(slot);
-                        }}
-                        className="text-xs font-mono bg-slate-900 hover:bg-indigo-600/20 hover:border-indigo-500 text-slate-300 hover:text-indigo-300 border border-slate-800 px-3 py-1.5 rounded-xl transition cursor-pointer"
-                      >
-                        {slot}
-                      </button>
-                    ))
-                  ) : (
-                    <span className="text-xs text-slate-500 italic">
-                      No slots available today
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <button
-              onClick={() => handleOpenBookForm(room)}
-              className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3.5 rounded-2xl text-sm transition shadow-lg shadow-indigo-600/40 flex items-center justify-center gap-2.5 cursor-pointer"
+          return (
+            <div
+              key={room.id}
+              className="bg-slate-900 border border-slate-800 rounded-3xl p-5 flex flex-col justify-between shadow-xl"
             >
-              <CalendarIcon className="w-4 h-4 text-white" /> Book Room
-            </button>
-          </div>
-        ))}
+              <div>
+                <div className="flex justify-between items-center mb-3">
+                  <span className="text-[11px] px-2.5 py-0.5 bg-indigo-950 text-indigo-400 border border-indigo-800/50 rounded-full font-medium tracking-wide">
+                    MEETING ROOM
+                  </span>
+                  <span
+                    className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${
+                      isMaintenance
+                        ? "text-amber-400 bg-amber-950/50 border-amber-800/40"
+                        : "text-emerald-400 bg-emerald-950/50 border-emerald-800/40"
+                    }`}
+                  >
+                    {isMaintenance ? "Maintenance" : "Available"}
+                  </span>
+                </div>
+                <h3 className="text-xl font-bold text-white mb-3">{room.name}</h3>
+
+                <div className="bg-slate-950/60 border border-slate-800/80 rounded-2xl p-3.5 mb-4">
+                  <div className="text-xs text-slate-400 font-medium mb-2 flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>{" "}
+                    Available Today:
+                  </div>
+                  <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto no-scrollbar">
+                    {isMaintenance ? (
+                      <span className="text-xs text-amber-400/80 italic">
+                        Room is under maintenance
+                      </span>
+                    ) : room.today_slots && room.today_slots.length > 0 ? (
+                      room.today_slots.map((slot, i) => (
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={() => {
+                            handleOpenBookForm(room);
+                            handleSelectSlotBadge(slot);
+                          }}
+                          className="text-xs font-mono bg-slate-900 hover:bg-indigo-600/20 hover:border-indigo-500 text-slate-300 hover:text-indigo-300 border border-slate-800 px-3 py-1.5 rounded-xl transition cursor-pointer"
+                        >
+                          {slot}
+                        </button>
+                      ))
+                    ) : (
+                      <span className="text-xs text-slate-500 italic">
+                        No slots available today
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                disabled={isMaintenance}
+                onClick={() => handleOpenBookForm(room)}
+                className={`w-full font-bold py-3.5 rounded-2xl text-sm transition flex items-center justify-center gap-2.5 ${
+                  isMaintenance
+                    ? "bg-slate-800/80 text-slate-500 border border-slate-700/50 cursor-not-allowed opacity-60"
+                    : "bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/40 cursor-pointer"
+                }`}
+              >
+                {isMaintenance ? (
+                  "Under Maintenance"
+                ) : (
+                  <>
+                    <CalendarIcon className="w-4 h-4 text-white" /> Book Room
+                  </>
+                )}
+              </button>
+            </div>
+          );
+        })}
       </div>
 
       {isFormOpen && selectedRoom && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           {/* Modal Box - Increased sizing and font clarity */}
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-lg p-6 relative shadow-2xl overflow-visible">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-lg p-6 relative shadow-2xl max-h-[92vh] overflow-y-auto no-scrollbar">
             <button
               onClick={() => setIsFormOpen(false)}
               className="absolute top-5 right-5 p-1.5 text-slate-400 hover:text-white transition cursor-pointer z-20"
@@ -584,7 +626,7 @@ export default function BookingPage() {
                 <span className="text-xs text-slate-400 block mb-1.5 font-medium">
                   Available slots:
                 </span>
-                <div className="flex flex-wrap gap-1.5 max-h-16 overflow-y-auto">
+                <div className="flex flex-wrap gap-1.5 max-h-16 overflow-y-auto no-scrollbar">
                   {selectedRoom.modal_slots &&
                   selectedRoom.modal_slots.length > 0 ? (
                     selectedRoom.modal_slots.map((slot, i) => (

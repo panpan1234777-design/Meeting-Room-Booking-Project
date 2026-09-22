@@ -49,8 +49,10 @@ export default function AdminCalendarPage() {
     <div className="p-6 space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">Calendar</h1>
-          <p className="text-slate-400 text-sm">
+          <h1 className="text-2xl font-extrabold tracking-tight text-white md:text-3xl">
+            Calendar
+          </h1>
+          <p className="mt-1 text-sm text-slate-400">
             View all bookings
           </p>
         </div>

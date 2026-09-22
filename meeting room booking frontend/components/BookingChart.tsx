@@ -27,7 +27,15 @@ interface BookingChartProps {
   roomName: (id: number) => string;
 }
 
-type ChartRange = "today" | "week" | "month";
+type ChartRange = "today" | "week" | "year";
+
+interface CategoryItem {
+  id: string;
+  label: string;
+  tooltipTitle: string;
+  isCurrent?: boolean;
+  filter: (bookingDate: string) => boolean;
+}
 
 function dateOnly(value: string | Date): string {
   if (value instanceof Date) {
@@ -67,41 +75,79 @@ function formatTooltipDate(dateString: string) {
   });
 }
 
-function getDateRange(range: ChartRange) {
-  const today = new Date();
+const MONTH_NAMES = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+];
 
+function getCategories(range: ChartRange): CategoryItem[] {
+  const today = new Date();
   today.setHours(0, 0, 0, 0);
+  const todayString = dateOnly(today);
 
   if (range === "today") {
     return Array.from({ length: 7 }, (_, index) => {
-      return dateOnly(addDays(today, index - 3));
+      const d = addDays(today, index - 3);
+      const str = dateOnly(d);
+      const isToday = str === todayString;
+
+      return {
+        id: str,
+        label: isToday ? "TODAY" : formatAxisDate(str),
+        tooltipTitle: formatTooltipDate(str),
+        isCurrent: isToday,
+        filter: (bDate: string) => dateOnly(bDate) === str,
+      };
     });
   }
 
   if (range === "week") {
     const day = today.getDay();
-
     const mondayOffset = day === 0 ? -6 : 1 - day;
+    const currentMonday = new Date(today);
+    currentMonday.setDate(today.getDate() + mondayOffset);
 
-    const monday = new Date(today);
+    return [-2, -1, 0, 1, 2].map((weekOffset) => {
+      const weekMonday = new Date(currentMonday);
+      weekMonday.setDate(currentMonday.getDate() + weekOffset * 7);
+      const weekSunday = addDays(weekMonday, 6);
 
-    monday.setDate(monday.getDate() + mondayOffset);
+      const startStr = dateOnly(weekMonday);
+      const endStr = dateOnly(weekSunday);
 
-    return Array.from({ length: 7 }, (_, index) => {
-      return dateOnly(addDays(monday, index));
+      let label = `${formatAxisDate(startStr)} - ${formatAxisDate(endStr)}`;
+      if (weekOffset === 0) label = "This Week";
+      else if (weekOffset === -1) label = "Last Week";
+      else if (weekOffset === 1) label = "Next Week";
+      else if (weekOffset === -2) label = "2 Weeks Ago";
+      else if (weekOffset === 2) label = "In 2 Weeks";
+
+      return {
+        id: startStr,
+        label,
+        tooltipTitle: `Week of ${formatAxisDate(startStr)} - ${formatAxisDate(endStr)}`,
+        isCurrent: weekOffset === 0,
+        filter: (bDate: string) => {
+          const dStr = dateOnly(bDate);
+          return dStr >= startStr && dStr <= endStr;
+        },
+      };
     });
   }
 
-  // Current month
   const year = today.getFullYear();
-  const month = today.getMonth();
+  const currentMonth = today.getMonth();
 
-  const lastDay = new Date(year, month + 1, 0).getDate();
+  return MONTH_NAMES.map((mName, mIndex) => {
+    const monthStr = `${year}-${String(mIndex + 1).padStart(2, "0")}`;
 
-  return Array.from({ length: lastDay }, (_, index) => {
-    const date = new Date(year, month, index + 1);
-
-    return dateOnly(date);
+    return {
+      id: monthStr,
+      label: mName,
+      tooltipTitle: `${mName} ${year}`,
+      isCurrent: mIndex === currentMonth,
+      filter: (bDate: string) => dateOnly(bDate).startsWith(monthStr),
+    };
   });
 }
 
@@ -109,18 +155,16 @@ export default function BookingChart({
   bookings,
   roomName,
 }: BookingChartProps) {
- const chartRef = useRef<HTMLDivElement>(null);
-
+  const chartRef = useRef<HTMLDivElement>(null);
   const [range, setRange] = useState<ChartRange>("today");
-
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  const dates = useMemo(() => {
-    return getDateRange(range);
+  const categories = useMemo(() => {
+    return getCategories(range);
   }, [range]);
 
   const roomNames = useMemo(() => {
@@ -128,7 +172,6 @@ export default function BookingChart({
 
     bookings.forEach((booking) => {
       const name = booking.room?.name || roomName(booking.room_id);
-
       names.add(name);
     });
 
@@ -137,13 +180,10 @@ export default function BookingChart({
 
   const series = useMemo(() => {
     return roomNames.map((name) => {
-      const values = dates.map((date) => {
+      const values = categories.map((cat) => {
         return bookings.filter((booking) => {
           const bookingRoom = booking.room?.name || roomName(booking.room_id);
-
-          return (
-            bookingRoom === name && dateOnly(booking.booking_date) === date
-          );
+          return bookingRoom === name && cat.filter(booking.booking_date);
         }).length;
       });
 
@@ -162,9 +202,7 @@ export default function BookingChart({
         },
       };
     });
-  }, [bookings, dates, roomNames, roomName]);
-
-  const todayString = dateOnly(new Date());
+  }, [bookings, categories, roomNames, roomName]);
 
   const options: Highcharts.Options = {
     chart: {
@@ -206,7 +244,7 @@ export default function BookingChart({
     },
 
     xAxis: {
-      categories: dates,
+      categories: categories.map((c) => c.label),
       lineColor: "#1e293b",
       tickColor: "#1e293b",
 
@@ -218,46 +256,24 @@ export default function BookingChart({
         },
 
         formatter: function () {
-          const date = String(this.value);
+          const idx = typeof this.pos === "number" ? this.pos : 0;
+          const cat = categories[idx];
 
-          if (range === "today" && date === todayString) {
+          if (cat?.isCurrent) {
             return `
-              <span style="
-                color:#60a5fa;
-                font-weight:700;
-              ">
-                TODAY
-              </span>
-              <br/>
-              <span style="
-                color:#64748b;
-                font-size:10px;
-              ">
-                ${formatAxisDate(date)}
+              <span style="color:#60a5fa; font-weight:700;">
+                ${cat.label}
               </span>
             `;
           }
 
           return `
             <span style="color:#64748b">
-              ${formatAxisDate(date)}
+              ${this.value}
             </span>
           `;
         },
       },
-
-      plotLines:
-        range === "today"
-          ? [
-              {
-                value: dates.indexOf(todayString),
-                color: "#334155",
-                width: 1,
-                dashStyle: "Dash",
-                zIndex: 3,
-              },
-            ]
-          : [],
     },
 
     yAxis: {
@@ -286,7 +302,6 @@ export default function BookingChart({
     tooltip: {
       shared: true,
       useHTML: true,
-
       backgroundColor: "#0b1427",
       borderColor: "#263653",
       borderRadius: 12,
@@ -299,51 +314,24 @@ export default function BookingChart({
       },
       formatter: function () {
         const index = typeof this.x === "number" ? this.x : 0;
-        const date = dates[index];
+        const cat = categories[index];
 
         let html = `
-          <div style="
-            min-width:150px;
-            padding:4px;
-          ">
-            <div style="
-              color:#f8fafc;
-              font-size:12px;
-              font-weight:700;
-              margin-bottom:10px;
-            ">
-              ${formatTooltipDate(date)}
+          <div style="min-width:150px; padding:4px;">
+            <div style="color:#f8fafc; font-size:12px; font-weight:700; margin-bottom:10px;">
+              ${cat?.tooltipTitle || ""}
             </div>
         `;
 
         this.points?.forEach((point) => {
           html += `
-            <div style="
-              display:flex;
-              justify-content:space-between;
-              align-items:center;
-              gap:20px;
-              margin-top:6px;
-            ">
-              <span style="
-                color:#cbd5e1;
-                font-size:11px;
-              ">
-                <span style="
-                  display:inline-block;
-                  width:7px;
-                  height:7px;
-                  border-radius:50%;
-                  background:${point.color};
-                  margin-right:6px;
-                "></span>
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:20px; margin-top:6px;">
+              <span style="color:#cbd5e1; font-size:11px;">
+                <span style="display:inline-block; width:7px; height:7px; border-radius:50%; background:${point.color}; margin-right:6px;"></span>
                 ${point.series.name}
               </span>
 
-              <strong style="
-                color:#f8fafc;
-                font-size:12px;
-              ">
+              <strong style="color:#f8fafc; font-size:12px;">
                 ${point.y}
               </strong>
             </div>
@@ -423,10 +411,10 @@ export default function BookingChart({
             <p className="mt-1 text-xs text-slate-500">
               Meeting room bookings for{" "}
               {range === "today"
-                ? "the previous 3 days, today and next 3 days"
+                ? "the previous 3 days, today, and next 3 days"
                 : range === "week"
-                  ? "this week"
-                  : "this month"}
+                  ? "past 2 weeks, current week, and next 2 weeks"
+                  : "January to December of current year"}
             </p>
           </div>
         </div>
@@ -460,14 +448,14 @@ export default function BookingChart({
 
           <button
             type="button"
-            onClick={() => setRange("month")}
+            onClick={() => setRange("year")}
             className={`rounded-lg px-4 py-2 text-xs font-semibold transition ${
-              range === "month"
+              range === "year"
                 ? "bg-blue-500/15 text-blue-400 shadow-sm"
                 : "text-slate-500 hover:text-slate-300"
             }`}
           >
-            Month
+            Year
           </button>
         </div>
       </div>
