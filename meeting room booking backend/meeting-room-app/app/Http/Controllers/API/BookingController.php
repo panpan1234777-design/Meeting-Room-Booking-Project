@@ -5,6 +5,7 @@ namespace App\Http\Controllers\API;
 use App\Http\Requests\StoreBookingRequest;
 use App\Http\Requests\UpdateBookingRequest;
 use App\Models\Booking;
+use App\Models\Room;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
@@ -26,6 +27,15 @@ class BookingController extends BaseController
 
    public function store(StoreBookingRequest $request): JsonResponse
 {
+    $room = Room::findOrFail($request->room_id);
+
+    if ($room->status === 'maintenance') {
+        return response()->json([
+            'status' => false,
+            'message' => 'This room is currently under maintenance and cannot be booked.',
+        ], 409);
+    }
+
     $data = $request->validated();
     $data['user_id'] = Auth::id();
     $data['status'] = 'booked';

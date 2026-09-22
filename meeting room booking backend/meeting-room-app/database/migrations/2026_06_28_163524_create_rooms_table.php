@@ -17,7 +17,13 @@ return new class extends Migration
             $table->string('name');
             $table->integer('capacity');
             $table->string('location');
-            $table->string('status')->default('available');
+            $table->enum('status', [
+                'available',
+                'maintenance',
+            ])->default('available');
+
+            $table->text('description')->nullable();
+            $table->string('image')->nullable();
             $table->timestamps();
         });
     }
@@ -27,6 +33,11 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('rooms');
+        Schema::table('rooms', function (Blueprint $table) {
+            $table->dropColumn([
+                'description',
+                'image',
+            ]);
+        });
     }
 };

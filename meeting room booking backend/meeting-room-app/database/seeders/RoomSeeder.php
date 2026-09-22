@@ -17,19 +17,23 @@ class RoomSeeder extends Seeder
         $rooms = [
             [
                 'name' => 'Mind Room',
-                'capacity'=> 5,
-                'location'=> '4th floor',
-                'status'=>'available',
+                'capacity' => 5,
+                'location' => '4th floor',
+                'status' => 'available',
+                'description' => 'Small meeting room for focused discussions.',
+                'image' => null,
             ],
             [
-                'name'=>'Infinity Room',
-                'capacity'=> 10,
-                'location'=>'4th floor',
+                'name' => 'Infinity Room',
+                'capacity' => 10,
+                'location' => '4th floor',
+                'status' => 'available',
+                'description' => 'Large meeting room for team meetings.',
+                'image' => null,
             ],
         ];
-         foreach($rooms as $room){
+        foreach ($rooms as $room) {
             Room::create($room);
         }
-
     }
 }
