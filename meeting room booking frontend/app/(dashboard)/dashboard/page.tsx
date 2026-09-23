@@ -107,12 +107,12 @@ function getStatusStyle(status: string) {
     return "border-blue-500/30 bg-blue-500/10 text-blue-400";
   }
 
-  if (value === "cancel" || value === "cancelled" || value === "canceled") {
-    return "border-slate-500/30 bg-slate-500/10 text-slate-400";
+ if (value === "cancel" || value === "cancelled" || value === "canceled") {
+    return "border-amber-500/30 bg-amber-500/10 text-amber-400 px-2.5 py-0.5 shadow-sm";
   }
 
   if (value === "rejected") {
-    return "border-rose-500/30 bg-rose-500/10 text-rose-400";
+    return "border-rose-500/30 bg-rose-500/10 text-rose-400 px-2.5 py-0.5 shadow-sm";
   }
 
   return "border-amber-500/30 bg-amber-500/10 text-amber-400";
