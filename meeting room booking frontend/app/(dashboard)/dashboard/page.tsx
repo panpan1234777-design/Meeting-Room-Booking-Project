@@ -108,11 +108,11 @@ function getStatusStyle(status: string) {
   }
 
  if (value === "cancel" || value === "cancelled" || value === "canceled") {
-    return "border-amber-500/30 bg-amber-500/10 text-amber-400 px-2.5 py-0.5 shadow-sm";
+    return "border-amber-500/30 bg-amber-500/10 text-amber-400";
   }
 
   if (value === "rejected") {
-    return "border-rose-500/30 bg-rose-500/10 text-rose-400 px-2.5 py-0.5 shadow-sm";
+    return "border-rose-500/30 bg-rose-500/10 text-rose-400";
   }
 
   return "border-amber-500/30 bg-amber-500/10 text-amber-400";
@@ -746,12 +746,12 @@ function BookingTableCard({
               </th>
 
               <th
-                className={showDate ? "w-[18%] px-3 py-3" : "w-[20%] px-3 py-3"}
+                className={showDate ? "w-[16%] px-3 py-3" : "w-[18%] px-3 py-3"}
               >
                 Purpose
               </th>
 
-              <th className="w-[16%] px-3 py-3 text-center">Status</th>
+              <th className={showDate ? "w-[20%] px-3 py-3 text-center" : "w-[22%] px-3 py-3 text-center"}>Status</th>
             </tr>
           </thead>
 
@@ -823,12 +823,11 @@ function BookingTableCard({
 
                     <td className="px-3 py-3.5 text-center align-middle">
                       <span
-                        className={`inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-0.5 text-xs font-medium ${getStatusStyle(
+                        className={`inline-flex items-center justify-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold leading-tight ${getStatusStyle(
                           booking.status,
                         )}`}
                       >
-                        <span className="h-1.5 w-1.5 rounded-full bg-current" />
-
+                        <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-current" />
                         {getStatusLabel(booking.status)}
                       </span>
                     </td>

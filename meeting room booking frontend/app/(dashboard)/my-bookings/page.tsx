@@ -14,6 +14,8 @@ import {
 import { useAuth } from "../../context/AuthContext";
 import SearchBar from "@/components/SearchBar";
 import Pagination from "@/components/Pagination";
+import ConfirmDialog from "@/components/ConfirmDialog";
+
 
 /* -------------------- TYPES & CONSTANTS -------------------- */
 
@@ -129,6 +131,8 @@ export default function MyBookingsPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [actingId, setActingId] = useState<number | null>(null);
+  const [cancelTargetId, setCancelTargetId] = useState<number | null>(null);
+const [dialogMsg, setDialogMsg] = useState<string | null>(null);
 
   const [activeTab, setActiveTab] = useState<StatusTab>("all");
   const [dateFilter, setDateFilter] = useState<DateRange>("today"); // default: today
@@ -243,15 +247,19 @@ export default function MyBookingsPage() {
 
   /* ---------- Cancel ---------- */
 
-  const handleCancelBooking = async (bookingId: number) => {
-    if (!window.confirm("Are you sure you want to cancel this booking?")) {
-      return;
-    }
+   const handleCancelBooking = (bookingId: number) => {
+    setCancelTargetId(bookingId);
+  };
+
+  const confirmCancelBooking = async () => {
+    if (cancelTargetId == null) return;
+    const bookingId = cancelTargetId;
+    setCancelTargetId(null);
 
     const token = localStorage.getItem("token");
 
     if (!token) {
-      alert("You are not logged in.");
+      setDialogMsg("You are not logged in.");
       return;
     }
 
@@ -272,11 +280,10 @@ export default function MyBookingsPage() {
       const resData = await response.json();
 
       if (!response.ok) {
-        alert(resData.message || "Failed to cancel this booking.");
+        setDialogMsg(resData.message || "Failed to cancel this booking.");
         return;
       }
 
-      // Update locally so it moves to "Cancelled" without a page refresh
       setBookings((current) =>
         current.map((b) =>
           b.id === bookingId ? { ...b, status: "cancelled" } : b
@@ -284,7 +291,7 @@ export default function MyBookingsPage() {
       );
     } catch (error) {
       console.error("Error cancelling booking:", error);
-      alert("Something went wrong while cancelling the booking.");
+      setDialogMsg("Something went wrong while cancelling the booking.");
     } finally {
       setActingId(null);
     }
@@ -482,6 +489,24 @@ export default function MyBookingsPage() {
         totalItems={filteredBookings.length}
         pageSize={PAGE_SIZE}
         onPageChange={setPage}
+      />
+            <ConfirmDialog
+        open={cancelTargetId !== null}
+        title="Cancel booking"
+        message="Are you sure you want to cancel this booking?"
+        confirmText="Yes, cancel"
+        cancelText="No"
+        danger
+        onConfirm={confirmCancelBooking}
+        onCancel={() => setCancelTargetId(null)}
+      />
+
+      <ConfirmDialog
+        open={dialogMsg !== null}
+        title="Notice"
+        message={dialogMsg ?? ""}
+        alertOnly
+        onConfirm={() => setDialogMsg(null)}
       />
     </div>
   );

@@ -10,6 +10,8 @@ import {
 } from "lucide-react";
 import RoomCard from "@/components/RoomCard";
 import type { Room } from "@/types/room";
+import ConfirmDialog from "@/components/ConfirmDialog";
+import Toast from "@/components/Toast";
 
 type ModalMode = "create" | "edit" | "detail";
 
@@ -23,7 +25,8 @@ export default function AdminRoomsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<ModalMode>("create");
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
-
+const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
   // Form
   const [name, setName] = useState("");
   const [capacity, setCapacity] = useState("");
@@ -52,6 +55,9 @@ export default function AdminRoomsPage() {
 
     return `${BASE_URL}/storage/${imagePath}`;
   };
+  const showToast = (message: string, type: "success" | "error" = "success") => {
+  setToast({ message, type });
+};
 
   // --------------------------------------------------
   // FETCH ROOMS
@@ -188,25 +194,25 @@ export default function AdminRoomsPage() {
   ) => {
     e.preventDefault();
 
-    if (!name.trim()) {
-      alert("Please enter room name.");
+        if (!name.trim()) {
+      showToast("Please enter room name.", "error");
       return;
     }
 
     if (!capacity || Number(capacity) < 1) {
-      alert("Please enter a valid capacity.");
+      showToast("Please enter a valid capacity.", "error");
       return;
     }
 
     if (!location.trim()) {
-      alert("Please enter room location.");
+      showToast("Please enter room location.", "error");
       return;
     }
 
     const token = localStorage.getItem("token");
 
     if (!token) {
-      alert("Authentication token not found.");
+      showToast("Authentication token not found.", "error");
       return;
     }
 
@@ -247,8 +253,8 @@ export default function AdminRoomsPage() {
 
       const data = await response.json();
 
-      if (response.ok) {
-        alert(
+           if (response.ok) {
+        showToast(
           modalMode === "create"
             ? "Room created successfully!"
             : "Room updated successfully!"
@@ -265,14 +271,14 @@ export default function AdminRoomsPage() {
             .flat()
             .join("\n");
 
-          alert(firstError);
+          showToast(firstError, "error");
         } else {
-          alert(data.message || "Something went wrong.");
+          showToast(data.message || "Something went wrong.", "error");
         }
       }
     } catch (error) {
       console.error("Error saving room:", error);
-      alert("Unable to save room.");
+      showToast("Unable to save room.", "error");
     } finally {
       setIsSubmitting(false);
     }
@@ -281,32 +287,30 @@ export default function AdminRoomsPage() {
   // --------------------------------------------------
   // DELETE
   // --------------------------------------------------
+  const handleDelete = (id: number) => {
+    setDeleteTargetId(id);
+  };
 
-  const handleDelete = async (id: number) => {
-    const confirmed = window.confirm(
-      "Are you sure you want to delete this room?"
-    );
-
-    if (!confirmed) return;
+  const confirmDeleteRoom = async () => {
+    if (deleteTargetId == null) return;
+    const id = deleteTargetId;
+    setDeleteTargetId(null);
 
     const token = localStorage.getItem("token");
 
     if (!token) {
-      alert("Authentication token not found.");
+      showToast("Authentication token not found.", "error");
       return;
     }
 
     try {
-      const response = await fetch(
-        `${BASE_URL}/api/rooms/${id}`,
-        {
-          method: "DELETE",
-          headers: {
-            Accept: "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      const response = await fetch(`${BASE_URL}/api/rooms/${id}`, {
+        method: "DELETE",
+        headers: {
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
       const data = await response.json();
 
@@ -315,13 +319,13 @@ export default function AdminRoomsPage() {
           currentRooms.filter((room) => room.id !== id)
         );
 
-        alert("Room deleted successfully!");
+        showToast("Room deleted successfully!");
       } else {
-        alert(data.message || "Unable to delete room.");
+        showToast(data.message || "Unable to delete room.", "error");
       }
     } catch (error) {
       console.error("Error deleting room:", error);
-      alert("Unable to delete room.");
+      showToast("Unable to delete room.", "error");
     }
   };
 
@@ -774,6 +778,21 @@ export default function AdminRoomsPage() {
           </div>
         </div>
       )}
+            <ConfirmDialog
+        open={deleteTargetId !== null}
+        title="Delete room"
+        message="Are you sure you want to delete this room? This cannot be undone."
+        confirmText="Delete"
+        danger
+        onConfirm={confirmDeleteRoom}
+        onCancel={() => setDeleteTargetId(null)}
+      />
+
+      <Toast
+        message={toast?.message ?? null}
+        type={toast?.type}
+        onClose={() => setToast(null)}
+      />
     </div>
   );
 }

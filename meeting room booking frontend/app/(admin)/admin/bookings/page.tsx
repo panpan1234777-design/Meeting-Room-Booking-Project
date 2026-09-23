@@ -15,6 +15,7 @@ import { apiFetch } from "@/lib/api";
 import { useAuth } from "../../../context/AuthContext";
 import SearchBar from "@/components/SearchBar";
 import Pagination from "@/components/Pagination";
+import ConfirmDialog from "@/components/ConfirmDialog";
 
 /* -------------------- TYPES & CONSTANTS -------------------- */
 
@@ -117,6 +118,10 @@ export default function AdminBookingsPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [actingId, setActingId] = useState<number | null>(null);
+  const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
+  const [rejectTargetId, setRejectTargetId] = useState<number | null>(null);
+
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const [activeTab, setActiveTab] = useState<StatusTab>("all");
   const [dateFilter, setDateFilter] = useState<DateRange>("today"); // default: today
@@ -174,31 +179,34 @@ export default function AdminBookingsPage() {
       });
   }, [bookings, search, dateFilter]);
 
- const counts = Object.fromEntries(
-  STATUS_TABS.map((tab) => [
-    tab,
-    tab === "all"
-      ? scopedBookings.length
-      : scopedBookings.filter((b) => b.status === tab).length,
-  ])
-) as Record<StatusTab, number>;
+  const counts = Object.fromEntries(
+    STATUS_TABS.map((tab) => [
+      tab,
+      tab === "all"
+        ? scopedBookings.length
+        : scopedBookings.filter((b) => b.status === tab).length,
+    ]),
+  ) as Record<StatusTab, number>;
 
   const filteredBookings = useMemo(
     () =>
       activeTab === "all"
         ? scopedBookings
         : scopedBookings.filter((b) => b.status === activeTab),
-    [scopedBookings, activeTab]
+    [scopedBookings, activeTab],
   );
 
   /* ---------- Pagination ---------- */
 
-  const totalPages = Math.max(1, Math.ceil(filteredBookings.length / PAGE_SIZE));
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredBookings.length / PAGE_SIZE),
+  );
   const safePage = Math.min(page, totalPages); // e.g. after deleting last item of last page
 
   const pagedBookings = filteredBookings.slice(
     (safePage - 1) * PAGE_SIZE,
-    safePage * PAGE_SIZE
+    safePage * PAGE_SIZE,
   );
 
   /* ---------- Actions ---------- */
@@ -206,7 +214,7 @@ export default function AdminBookingsPage() {
   const runAction = async (
     id: number,
     request: () => Promise<unknown>,
-    onSuccess: () => void
+    onSuccess: () => void,
   ) => {
     setActingId(id);
 
@@ -215,7 +223,7 @@ export default function AdminBookingsPage() {
       onSuccess();
     } catch (err) {
       console.error(err);
-      alert("Something went wrong. Please try again.");
+      setErrorMsg("Something went wrong. Please try again.");
     } finally {
       setActingId(null);
     }
@@ -223,27 +231,41 @@ export default function AdminBookingsPage() {
 
   const updateStatus = (id: number, status: Status) => {
     setBookings((prev) =>
-      prev.map((b) => (b.id === id ? { ...b, status } : b))
+      prev.map((b) => (b.id === id ? { ...b, status } : b)),
     );
   };
 
-  const handleReject = (id: number) =>
+  const handleReject = (id: number) => {
+    setRejectTargetId(id);
+  };
+
+  const confirmReject = () => {
+    if (rejectTargetId == null) return;
+    const id = rejectTargetId;
+    setRejectTargetId(null);
+
     runAction(
       id,
       () => apiFetch(`/bookings/${id}/reject`, { method: "POST", token }),
-      () => updateStatus(id, "rejected")
+      () => updateStatus(id, "rejected"),
     );
+  };
 
   const handleDelete = (id: number) => {
-    if (!window.confirm("Delete this booking?")) return;
+    setDeleteTargetId(id);
+  };
+
+  const confirmDelete = () => {
+    if (deleteTargetId == null) return;
+    const id = deleteTargetId;
+    setDeleteTargetId(null);
 
     runAction(
       id,
       () => apiFetch(`/bookings/${id}`, { method: "DELETE", token }),
-      () => setBookings((prev) => prev.filter((b) => b.id !== id))
+      () => setBookings((prev) => prev.filter((b) => b.id !== id)),
     );
   };
-
   /* ---------- Loading ---------- */
 
   if (loading) {
@@ -447,6 +469,32 @@ export default function AdminBookingsPage() {
         totalItems={filteredBookings.length}
         pageSize={PAGE_SIZE}
         onPageChange={setPage}
+      />
+      <ConfirmDialog
+        open={deleteTargetId !== null}
+        title="Delete booking"
+        message="Are you sure you want to delete this booking? This cannot be undone."
+        confirmText="Delete"
+        danger
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteTargetId(null)}
+      />
+      <ConfirmDialog
+        open={rejectTargetId !== null}
+        title="Reject booking"
+        message="Are you sure you want to reject this booking?"
+        confirmText="Reject"
+        danger
+        onConfirm={confirmReject}
+        onCancel={() => setRejectTargetId(null)}
+      />
+
+      <ConfirmDialog
+        open={errorMsg !== null}
+        title="Error"
+        message={errorMsg ?? ""}
+        alertOnly
+        onConfirm={() => setErrorMsg(null)}
       />
     </div>
   );

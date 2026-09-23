@@ -36,9 +36,9 @@ type Booking = {
   purpose: string;
 
   /*
-   * Current project booking status
+   * Backend may return "cancel" or "cancelled"
    */
-  status: "booked" | "cancel" | "rejected";
+  status: "booked" | "cancel" | "cancelled" | "rejected";
 };
 
 const BUSINESS_START = 9;
@@ -54,28 +54,40 @@ const TOTAL_MINUTES =
 
 /*
 ==================================================
+NORMALIZE STATUS
+==================================================
+*/
+
+type NormalizedStatus = "booked" | "cancel" | "rejected";
+
+function normalizeStatus(
+  status: string
+): NormalizedStatus {
+  if (status === "cancelled" || status === "canceled")
+    return "cancel";
+  if (status === "booked" || status === "cancel" || status === "rejected")
+    return status as NormalizedStatus;
+  return "cancel";
+}
+
+/*
+==================================================
 STATUS STYLE
 ==================================================
 */
 
-const statusColor: Record<
-  Booking["status"],
-  string
-> = {
+const statusColor: Record<NormalizedStatus, string> = {
   booked:
     "bg-emerald-500 border-emerald-600 text-white",
 
   cancel:
-     "bg-slate-400/90 border-slate-500 text-white",
+    "bg-slate-400/90 border-slate-500 text-white",
 
   rejected:
     "bg-rose-400 border-rose-500 text-white",
 };
 
-const statusLabel: Record<
-  Booking["status"],
-  string
-> = {
+const statusLabel: Record<NormalizedStatus, string> = {
   booked: "Booked",
   cancel: "Cancelled",
   rejected: "Rejected",
@@ -223,6 +235,21 @@ export default function RoomCalendar({
       x: 0,
       y: 0,
     });
+
+  // Tooltip width & height constants for clamping
+  const TOOLTIP_W = 270;
+  const TOOLTIP_H = 230;
+
+  function clampTooltip(cx: number, cy: number) {
+    const vw = typeof window !== "undefined" ? window.innerWidth : 1200;
+    const vh = typeof window !== "undefined" ? window.innerHeight : 800;
+    const gap = 15;
+    let x = cx + gap;
+    let y = cy + gap;
+    if (x + TOOLTIP_W > vw - 8) x = cx - TOOLTIP_W - gap;
+    if (y + TOOLTIP_H > vh - 8) y = cy - TOOLTIP_H - gap;
+    return { x: Math.max(8, x), y: Math.max(8, y) };
+  }
 
   /*
   ==================================================
@@ -970,9 +997,8 @@ export default function RoomCalendar({
                                     cursor-pointer
                                     overflow-hidden
                                     transition-all
-                                    hover:-translate-y-0.5
                                     hover:shadow-md
-                                    ${statusColor[booking.status]}
+                                    ${statusColor[normalizeStatus(booking.status)]}
                                   `}
                                   style={{
                                     left: `calc(${left}% + 5px)`,
@@ -981,27 +1007,22 @@ export default function RoomCalendar({
                                   onMouseEnter={(
                                     event
                                   ) => {
-
-                                    setHovered(
-                                      booking
-                                    );
-
+                                    setHovered(booking);
                                     setHoverPos(
-                                      {
-                                        x: event.clientX,
-                                        y: event.clientY,
-                                      }
+                                      clampTooltip(
+                                        event.clientX,
+                                        event.clientY
+                                      )
                                     );
                                   }}
                                   onMouseMove={(
                                     event
                                   ) => {
-
                                     setHoverPos(
-                                      {
-                                        x: event.clientX,
-                                        y: event.clientY,
-                                      }
+                                      clampTooltip(
+                                        event.clientX,
+                                        event.clientY
+                                      )
                                     );
                                   }}
                                   onMouseLeave={() =>
@@ -1106,11 +1127,11 @@ export default function RoomCalendar({
                   text-[9px]
                   font-bold
                   uppercase
-                  ${statusColor[hovered.status]}
+                  ${statusColor[normalizeStatus(hovered.status)]}
                 `}
               >
                 {statusLabel[
-                  hovered.status
+                  normalizeStatus(hovered.status)
                 ]}
               </span>
 

@@ -1,10 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  CalendarDays,
-  ChevronDown,
-} from "lucide-react";
 
 import RoomCalendar from "@/components/RoomCalendar";
 import { apiFetch } from "@/lib/api";
@@ -62,27 +58,6 @@ function toDateKey(date: Date) {
   return `${year}-${month}-${day}`;
 }
 
-/*
-==================================================
-YYYY-MM-DD -> LOCAL DATE
-==================================================
-*/
-
-function fromDateKey(value: string) {
-  const [
-    year,
-    month,
-    day,
-  ] = value
-    .split("-")
-    .map(Number);
-
-  return new Date(
-    year,
-    month - 1,
-    day
-  );
-}
 
 export default function AdminCalendarPage() {
 
@@ -194,26 +169,6 @@ export default function AdminCalendarPage() {
 
   /*
   ==================================================
-  DATE PICKER
-  ==================================================
-  */
-
-  const handleDateChange = (
-    event: React.ChangeEvent<HTMLInputElement>
-  ) => {
-
-    const value =
-      event.target.value;
-
-    if (!value) return;
-
-    setSelectedDate(
-      fromDateKey(value)
-    );
-  };
-
-  /*
-  ==================================================
   TODAY
   ==================================================
   */
@@ -267,28 +222,6 @@ export default function AdminCalendarPage() {
           >
             Today
           </button>
-
-          {/* DATE */}
-
-          <label className="relative flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2">
-
-            <CalendarDays
-              size={16}
-              className="text-orange-400"
-            />
-
-            <input
-              type="date"
-              value={toDateKey(
-                selectedDate
-              )}
-              onChange={
-                handleDateChange
-              }
-              className="bg-transparent text-sm text-slate-200 outline-none"
-            />
-
-          </label>
 
         </div>
 
