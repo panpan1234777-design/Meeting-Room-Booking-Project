@@ -11,6 +11,7 @@ const navItems = [
   { label: "Rooms", href: "/rooms", icon: DoorOpen },
   { label: "Bookings", href: "/booking", icon: CalendarClock },
   { label: "My Bookings", href: "/my-bookings", icon: CalendarClock },
+  { label: "Calendar", href: "/admin/calendar", icon: Calendar },
 ];
 
 const adminNavItems = [

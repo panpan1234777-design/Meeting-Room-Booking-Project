@@ -32,6 +32,7 @@ export default function BookingPage() {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
 
   const todayObj = new Date();
@@ -77,7 +78,7 @@ export default function BookingPage() {
     return day === 0 || day === 6;
   };
 
-  // Filter out past slots for TODAY only; empty on weekends
+   // Filter out past slots for TODAY only; empty on weekends
   const getFilteredAvailableSlots = (slots?: string[], dateStr?: string) => {
     if (!slots || slots.length === 0) return [];
     const targetDate = dateStr || bookingDate;
@@ -86,13 +87,24 @@ export default function BookingPage() {
     if (targetDate === todayStr) {
       const now = new Date();
       const currentMins = now.getHours() * 60 + now.getMinutes();
-      return slots.filter((slot) => {
+      const earliestStart = Math.floor(currentMins / 5) * 5 + 5;
+      const fmt = (m: number) =>
+        `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+
+      const result: string[] = [];
+      slots.forEach((slot) => {
         const parts = slot.split(" - ");
-        if (parts.length !== 2) return true;
-        const [sh, sm] = parts[0].split(":").map(Number);
-        const slotStartMins = sh * 60 + sm;
-        return slotStartMins > currentMins;
+        if (parts.length !== 2) {
+          result.push(slot);
+          return;
+        }
+        const slotStart = timeStrToMins(parts[0]);
+        const slotEnd = timeStrToMins(parts[1]);
+        const newStart = Math.max(slotStart, earliestStart);
+        if (newStart >= slotEnd) return;
+        result.push(`${fmt(newStart)} - ${fmt(slotEnd)}`);
       });
+      return result;
     }
     return slots;
   };
@@ -111,7 +123,7 @@ export default function BookingPage() {
       })
       .filter((r): r is { start: number; end: number } => r !== null);
   };
-
+  //Rooms
   useEffect(() => {
     const fetchRoomsAndTodaySlots = async () => {
       try {
@@ -340,9 +352,8 @@ export default function BookingPage() {
     return `${String(h12).padStart(2, "0")}:${String(m).padStart(2, "0")} ${period}`;
   };
 
-  const handleSubmitBooking = async () => {
-  // Clear previous error
-  setErrorMessage("");
+    const handleSubmitBooking = async (e?: React.FormEvent) => {
+    e?.preventDefault();
 
   if (!selectedRoom) {
     setErrorMessage("Please select a meeting room.");
@@ -354,9 +365,7 @@ export default function BookingPage() {
     return;
   }
 
-  // --------------------------------------------------
-  // 1. Weekend validation
-  // --------------------------------------------------
+ //1.weekend validation
   if (isWeekend(bookingDate)) {
     setErrorMessage(
       "Booking is not available on weekends. Please select a weekday."
@@ -364,35 +373,29 @@ export default function BookingPage() {
     return;
   }
 
-  // --------------------------------------------------
-  // 2. Convert time to minutes
-  // --------------------------------------------------
+ //2.convert time to minute
   const startMins = timeStrToMins(startTime);
   const endMins = timeStrToMins(endTime);
 
-  // --------------------------------------------------
-  // 3. Working hours validation
-  // --------------------------------------------------
+  //3.working hour validation
   const WORK_START = 9 * 60;
   const WORK_END = 17 * 60;
 
   if (startMins < WORK_START || startMins >= WORK_END) {
     setErrorMessage(
-      "Please select a start time between 9:00 AM and 4:00 PM."
+      "Bookings are only allowed during office hours (9:00 AM – 5:00 PM)."
     );
     return;
   }
 
   if (endMins <= WORK_START || endMins > WORK_END) {
     setErrorMessage(
-      "Please select an end time between 10:00 AM and 5:00 PM."
+      "Bookings are only allowed during office hours (9:00 AM – 5:00 PM)."
     );
     return;
   }
 
-  // --------------------------------------------------
-  // 4. Start must be before end
-  // --------------------------------------------------
+//4. Start must be before end
   if (startMins >= endMins) {
     setErrorMessage(
       "End time must be later than start time."
@@ -400,9 +403,7 @@ export default function BookingPage() {
     return;
   }
 
-  // --------------------------------------------------
-  // 5. Same-day past time validation
-  // --------------------------------------------------
+ // 5. Same-day past time validation
   if (bookingDate === todayStr) {
     const now = new Date();
 
@@ -435,9 +436,9 @@ export default function BookingPage() {
     // 7. Send booking request to backend
     // --------------------------------------------------
     try {
-      setIsLoading(true);
+  setIsSubmitting(true);
 
-      const token = localStorage.getItem("token");
+  const token = localStorage.getItem("token");
 
       const response = await fetch(`${BASE_URL}/api/bookings`, {
         method: "POST",
@@ -493,8 +494,6 @@ setErrorMessage("");
 // Redirect immediately
 router.push("/my-bookings");
 
-      // Refresh rooms / available slots
-      // Keep your existing refresh logic here if you already have one.
     } catch (error) {
       console.error("Booking error:", error);
 
@@ -502,10 +501,10 @@ router.push("/my-bookings");
     "Something went wrong while creating the booking."
   );
     } finally {
-      setIsLoading(false);
-    }
+  setIsSubmitting(false);
+}
   };
-
+//Calendar(the whole week)
   const isDateWithinAllowedRange = (dateStr: string) => {
     const d = new Date(dateStr);
     const t = new Date(todayStr);
@@ -1198,7 +1197,7 @@ router.push("/my-bookings");
                     </button>
                     <button
                       type="submit"
-                      disabled={isWeekend(bookingDate)}
+                      disabled={isWeekend(bookingDate)||isSubmitting}
                       className={`flex-1 py-3 rounded-2xl text-sm font-bold transition flex items-center justify-center gap-2 ${
                         isWeekend(bookingDate)
                           ? "bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed opacity-50"

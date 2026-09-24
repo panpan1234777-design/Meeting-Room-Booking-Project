@@ -16,7 +16,6 @@ import SearchBar from "@/components/SearchBar";
 import Pagination from "@/components/Pagination";
 import ConfirmDialog from "@/components/ConfirmDialog";
 
-
 /* -------------------- TYPES & CONSTANTS -------------------- */
 
 interface Booking {
@@ -40,12 +39,7 @@ type DateRange = "today" | "week" | "month" | "all";
 const BASE_URL = "http://localhost:8000";
 const PAGE_SIZE = 6;
 
-const STATUS_TABS: StatusTab[] = [
-  "all",
-  "booked",
-  "cancelled",
-  "rejected",
-];
+const STATUS_TABS: StatusTab[] = ["all", "booked", "cancelled", "rejected"];
 const DATE_RANGES: DateRange[] = ["today", "week", "month", "all"];
 
 const DATE_LABELS: Record<DateRange, string> = {
@@ -132,7 +126,7 @@ export default function MyBookingsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [actingId, setActingId] = useState<number | null>(null);
   const [cancelTargetId, setCancelTargetId] = useState<number | null>(null);
-const [dialogMsg, setDialogMsg] = useState<string | null>(null);
+  const [dialogMsg, setDialogMsg] = useState<string | null>(null);
 
   const [activeTab, setActiveTab] = useState<StatusTab>("all");
   const [dateFilter, setDateFilter] = useState<DateRange>("today"); // default: today
@@ -165,7 +159,7 @@ const [dialogMsg, setDialogMsg] = useState<string | null>(null);
       if (resData.status && currentUserId) {
         const myBookings = resData.data.filter(
           (booking: Booking) =>
-            Number(booking.user_id) === Number(currentUserId)
+            Number(booking.user_id) === Number(currentUserId),
         );
 
         setBookings(myBookings);
@@ -213,7 +207,7 @@ const [dialogMsg, setDialogMsg] = useState<string | null>(null);
         // newest date first, earliest time first inside the same date
         const dateCompare = b.booking_date.localeCompare(a.booking_date);
         if (dateCompare !== 0) return dateCompare;
-        return a.start_time.localeCompare(b.start_time);
+        return b.id - a.id;
       });
   }, [bookings, search, dateFilter]);
 
@@ -224,7 +218,7 @@ const [dialogMsg, setDialogMsg] = useState<string | null>(null);
         ? scopedBookings.length
         : scopedBookings.filter((b) => normalizeStatus(b.status) === tab)
             .length,
-    ])
+    ]),
   ) as Record<StatusTab, number>;
 
   const filteredBookings = useMemo(
@@ -232,22 +226,25 @@ const [dialogMsg, setDialogMsg] = useState<string | null>(null);
       activeTab === "all"
         ? scopedBookings
         : scopedBookings.filter((b) => normalizeStatus(b.status) === activeTab),
-    [scopedBookings, activeTab]
+    [scopedBookings, activeTab],
   );
 
   /* ---------- Pagination ---------- */
 
-  const totalPages = Math.max(1, Math.ceil(filteredBookings.length / PAGE_SIZE));
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredBookings.length / PAGE_SIZE),
+  );
   const safePage = Math.min(page, totalPages);
 
   const pagedBookings = filteredBookings.slice(
     (safePage - 1) * PAGE_SIZE,
-    safePage * PAGE_SIZE
+    safePage * PAGE_SIZE,
   );
 
   /* ---------- Cancel ---------- */
 
-   const handleCancelBooking = (bookingId: number) => {
+  const handleCancelBooking = (bookingId: number) => {
     setCancelTargetId(bookingId);
   };
 
@@ -274,7 +271,7 @@ const [dialogMsg, setDialogMsg] = useState<string | null>(null);
             Accept: "application/json",
             Authorization: `Bearer ${token}`,
           },
-        }
+        },
       );
 
       const resData = await response.json();
@@ -286,8 +283,8 @@ const [dialogMsg, setDialogMsg] = useState<string | null>(null);
 
       setBookings((current) =>
         current.map((b) =>
-          b.id === bookingId ? { ...b, status: "cancelled" } : b
-        )
+          b.id === bookingId ? { ...b, status: "cancelled" } : b,
+        ),
       );
     } catch (error) {
       console.error("Error cancelling booking:", error);
@@ -490,7 +487,7 @@ const [dialogMsg, setDialogMsg] = useState<string | null>(null);
         pageSize={PAGE_SIZE}
         onPageChange={setPage}
       />
-            <ConfirmDialog
+      <ConfirmDialog
         open={cancelTargetId !== null}
         title="Cancel booking"
         message="Are you sure you want to cancel this booking?"
