@@ -8,6 +8,8 @@ use App\Http\Requests\UpdateRoomRequest;
 use App\Models\Room;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Storage;
+use App\Models\Booking;
+use Illuminate\Support\Facades\DB;
 
 class RoomController extends Controller
 {
@@ -36,8 +38,6 @@ class RoomController extends Controller
         $data['status'] = $data['status'] ?? 'available';
 
         if ($request->hasFile('image')) {
-            // ယာယီအသုံးပြုရန် (သို့မဟုတ် ဖိုင်အသစ် သိမ်းဆည်းရန်)
-            // storage/app/public/rooms folder ထဲသို့ Laravel ရဲ့ storage disk ဖြင့် သိမ်းမည်
             $path = $request->file('image')->store('rooms', 'public');
 
             $data['image'] = $path; // ပုံ path ကို $data ထဲသို့ ထည့်သွင်းခြင်း
@@ -93,8 +93,16 @@ class RoomController extends Controller
                 ->file('image')
                 ->store('rooms', 'public');
         }
+        $wasMaintenance = $room->status === 'maintenance';
 
-        $room->update($data);
+        DB::transaction(function () use ($room, $data, $wasMaintenance) {
+
+            $room->update($data);
+
+            if (!$wasMaintenance && $room->status === 'maintenance') {
+                $this->rejectUpcomingBookings($room);
+            }
+        });
 
         return response()->json([
             'status' => true,
@@ -256,4 +264,24 @@ class RoomController extends Controller
             'available_slots' => $availableSlots,
         ], 200);
     }
+
+    private function rejectUpcomingBookings(Room $room): void
+{
+    $today = now()->format('Y-m-d');
+    $nowTime = now()->format('H:i:s');
+
+    Booking::where('room_id', $room->id)
+        ->where('status', 'booked')
+        ->where(function ($q) use ($today, $nowTime) {
+            $q->whereDate('booking_date', '>', $today)
+              ->orWhere(function ($q2) use ($today, $nowTime) {
+                  $q2->whereDate('booking_date', $today)
+                     ->where('end_time', '>', $nowTime);
+              });
+        })
+        ->update([
+            'status' => 'rejected',
+            'remark' => 'Room is under maintenance',
+        ]);
+}
 }
