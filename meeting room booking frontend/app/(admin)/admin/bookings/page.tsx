@@ -436,14 +436,14 @@ export default function AdminBookingsPage() {
                     </button>
                   )}
 
-                  <button
+                  {/* <button
                     type="button"
                     disabled={busy}
                     onClick={() => handleDelete(b.id)}
                     className="rounded-md border border-slate-700/70 px-2.5 py-1 text-[9px] font-semibold uppercase tracking-wide text-slate-400 transition-all hover:border-rose-500/40 hover:bg-rose-500/5 hover:text-rose-400 disabled:opacity-50"
                   >
                     Delete
-                  </button>
+                  </button> */}
                 </div>
               </div>
             );
