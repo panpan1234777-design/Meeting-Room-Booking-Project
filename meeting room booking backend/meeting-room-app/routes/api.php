@@ -42,3 +42,5 @@ Route::middleware('auth:api')->group(function () {
         Route::post('/bookings/{booking}/reject', [BookingController::class, 'reject']);
     });
 });
+
+
